@@ -1,0 +1,15 @@
+# STM32CubeIDE / Eclipse Ignore List
+.metadata/
+Debug/
+Release/
+build/
+
+# Derleme çıktıları
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.su
