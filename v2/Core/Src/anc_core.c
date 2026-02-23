@@ -11,8 +11,6 @@
 int32_t i2s_rx_buffer[I2S_BUFFER_SIZE] __attribute__((aligned(32)));
 int32_t i2s_tx_buffer[I2S_BUFFER_SIZE] __attribute__((aligned(32)));
 volatile int32_t* volatile active_buffer __attribute__((section(".dtcmram"), aligned(4))) = NULL;
-volatile float32_t debug_calib_error = 0.0f; // Yusufun eklediği kod --> İkincil Yol Doğruluğunu görmek için
-volatile float32_t debug_anc_noise_level = 0.0f; // Yusufun eklediği kod --> FxLMS doğruluğu için ekledim
 
 static float32_t input_buffer[BLOCK_SIZE]  __attribute__((aligned(4)));
 static float32_t output_buffer[BLOCK_SIZE] __attribute__((aligned(4)));
@@ -110,13 +108,6 @@ void ANC_Cycle_Handler(void)
             case ANC_STATE_CALIBRATION:
                 printf("\n>>> DURUM: CALIBRATION (Kalibrasyon Basladi) <<<\n");
                 printf("--- Hoparlorden hisirti gelmeli ---\n");
-
-                if (HAL_GetTick() - last_report_time > 1000)  // Bu if li kod bloğu yusuf tarafından ikincil yolun doğruluğunu test etmek için eklendi
-                {
-                	printf("[CALIB] Error Level: %.6f | SecPath[0]: %.4f\n",
-                			debug_calib_error, sec_path_coeffs[0]);
-                	last_report_time = HAL_GetTick();
-                }
                 break;
                 // anc_core.c içi
 
@@ -129,10 +120,6 @@ void ANC_Cycle_Handler(void)
 
                                 last_report_time = HAL_GetTick();
                             }
-
-                            printf("[ANC] Freq: %4.0f | NoiseLvl: %.5f | W[0]: %.5f\n",
-                            		current_freq, debug_anc_noise_level, anc_coeffs [0]);  // Yusuf tarafından fxlms doğruluğu için eklendi
-
                             break;
         }
         prev_anc_state = anc_state;
@@ -198,8 +185,6 @@ void process_audio_block(void)
 
                 float32_t error = input_buffer[i] - y_hat;
 
-                debug_calib_error = (0.999f * debug_calib_error) + (0.001f * fabsf(error)); // İkincil Yol doğruluk testi için yusuf ekledi
-
                 // 3. LMS (Kalibrasyon) - Gecikmeli
                 for(int k=0; k < SEC_PATH_LENGTH; k++) {
                     float32_t delayed_wn = GET_HIST(white_noise_history, wn_index, (SYSTEM_LATENCY + k));
@@ -252,9 +237,6 @@ void process_audio_block(void)
 
             // 4. Hata (e)
             float32_t error = input_buffer[i];
-            // float32_t error = input_buffer[i];  // Yusuf tarafından fxlms doğruluğunu test etmek için eklendi
-
-            debug_anc_noise_level = (0.99f * debug_anc_noise_level) + (0.01f * fabsf(error)); // Yusuf tarafından fxlms doğruluğu için eklendi
 
             // 5. [GÜVENLİ] LMS GÜNCELLEMESİ
             if(current_volume > 0.01f) {
